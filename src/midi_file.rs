@@ -1,6 +1,5 @@
-use nom::{multi::count, IResult};
-
 use crate::{header::HeaderChunk, track::TrackChunk};
+use nom::{multi::count, IResult};
 
 pub struct MidiFile {
     pub header: HeaderChunk,
@@ -18,10 +17,10 @@ impl MidiFile {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        event::Event,
+    use crate::event::{
         meta_event::{MetaEvent, MetaEventContent},
         midi_event::{ChannelMessage, ChannelVoiceMessage, MidiMessage},
+        Event,
     };
 
     use super::MidiFile;

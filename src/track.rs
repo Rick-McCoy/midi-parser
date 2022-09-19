@@ -1,10 +1,9 @@
+use crate::event::MTrkEvent;
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
     IResult,
 };
-
-use crate::event::MTrkEvent;
 
 pub struct TrackChunk {
     pub chunk_type: String,

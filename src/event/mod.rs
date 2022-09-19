@@ -1,8 +1,10 @@
-use crate::{
-    meta_event::MetaEvent, midi_event::MidiMessage, sysex_event::SysExEvent,
-    variable_length_quantity::VariableLengthQuantity,
-};
+use self::{meta_event::MetaEvent, midi_event::MidiMessage, sysex_event::SysExEvent};
+use crate::variable_length_quantity::VariableLengthQuantity;
 use nom::{combinator::peek, number::complete::be_u8, IResult};
+
+pub mod meta_event;
+pub mod midi_event;
+pub mod sysex_event;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Event {
