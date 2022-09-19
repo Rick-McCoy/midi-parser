@@ -38,6 +38,14 @@ impl Event {
         }
     }
 
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::MidiEvent(event) => event.to_bytes(),
+            Self::SysExEvent(event) => event.to_bytes(),
+            Self::MetaEvent(event) => event.to_bytes(),
+        }
+    }
+
     pub fn get_status(&self) -> u8 {
         match self {
             Self::MidiEvent(midi_message) => midi_message.get_status(),
@@ -58,6 +66,10 @@ impl MTrkEvent {
         let (input, delta_time) = VariableLengthQuantity::parse(input)?;
         let (input, event) = Event::parse(input, running_status)?;
         Ok((input, Self { delta_time, event }))
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        [self.delta_time.to_bytes(), self.event.to_bytes()].concat()
     }
 
     pub fn get_status(&self) -> u8 {

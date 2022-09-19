@@ -110,6 +110,41 @@ impl ChannelVoiceMessage {
         }
     }
 
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = vec![self.get_status()];
+        match self {
+            Self::NoteOff { note, velocity, .. } => {
+                bytes.push(*note);
+                bytes.push(*velocity);
+            }
+            Self::NoteOn { note, velocity, .. } => {
+                bytes.push(*note);
+                bytes.push(*velocity);
+            }
+            Self::PolyphonicKeyPressure { note, pressure, .. } => {
+                bytes.push(*note);
+                bytes.push(*pressure);
+            }
+            Self::ControlChange {
+                controller, value, ..
+            } => {
+                bytes.push(*controller);
+                bytes.push(*value);
+            }
+            Self::ProgramChange { program, .. } => {
+                bytes.push(*program);
+            }
+            Self::ChannelPressure { pressure, .. } => {
+                bytes.push(*pressure);
+            }
+            Self::PitchBendChange { value, .. } => {
+                bytes.push((value & 0x7f) as u8);
+                bytes.push((value >> 7) as u8);
+            }
+        }
+        bytes
+    }
+
     pub fn get_status(&self) -> u8 {
         match self {
             Self::NoteOff { channel, .. } => 0x80 | channel,
@@ -152,6 +187,23 @@ impl ModeMessage {
             _ => panic!("Invalid data1: Got {}", controller),
         }
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = vec![0xb0, 0x7f, 0x00];
+        match self {
+            Self::LocalControlOff => (),
+            Self::LocalControlOn => bytes[2] = 0x7f,
+            Self::AllNotesOff => bytes[1] = 0x7b,
+            Self::OmniModeOff => bytes[1] = 0x7c,
+            Self::OmniModeOn => bytes[1] = 0x7d,
+            Self::MonoModeOn { n } => {
+                bytes[1] = 0x7e;
+                bytes[2] = *n;
+            }
+            Self::PolyModeOn => bytes[1] = 0x7f,
+        }
+        bytes
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -163,10 +215,16 @@ pub struct ChannelModeMessage {
 impl ChannelModeMessage {
     pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
         let message_type = status >> 4;
-        let channel = status & 0x0f;
         assert_eq!(message_type, 0xb);
+        let channel = status & 0x0f;
         let (input, message) = ModeMessage::parse(input)?;
         Ok((input, Self { channel, message }))
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.message.to_bytes();
+        bytes[0] = self.get_status();
+        bytes
     }
 
     pub fn get_status(&self) -> u8 {
@@ -208,6 +266,13 @@ impl ChannelMessage {
         }
     }
 
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::ChannelVoiceMessage(message) => message.to_bytes(),
+            Self::ChannelModeMessage(message) => message.to_bytes(),
+        }
+    }
+
     pub fn get_status(&self) -> u8 {
         match self {
             Self::ChannelVoiceMessage(message) => message.get_status(),
@@ -240,8 +305,21 @@ impl SystemCommonMessage {
                 Ok((input, Self::SongSelect { song }))
             }
             0x6 => Ok((input, Self::TuneRequest)),
-            0xf => Ok((input, Self::EndOfExclusive)),
+            0x7 => Ok((input, Self::EndOfExclusive)),
             _ => panic!("Invalid message type: Got {}", message_type),
+        }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::SongPositionPointer { value } => {
+                let lsb = (value & 0x7f) as u8;
+                let msb = ((value >> 7) & 0x7f) as u8;
+                vec![0xf2, lsb, msb]
+            }
+            Self::SongSelect { song } => vec![0xf3, *song],
+            Self::TuneRequest => vec![0xf6],
+            Self::EndOfExclusive => vec![0xf7],
         }
     }
 
@@ -280,6 +358,17 @@ impl SystemRealTimeMessage {
         }
     }
 
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::TimingClock => vec![0xf8],
+            Self::Start => vec![0xfa],
+            Self::Continue => vec![0xfb],
+            Self::Stop => vec![0xfc],
+            Self::ActiveSensing => vec![0xfe],
+            Self::SystemReset => vec![0xff],
+        }
+    }
+
     pub fn get_status(&self) -> u8 {
         match self {
             Self::TimingClock => 0xf8,
@@ -303,15 +392,22 @@ impl SystemMessage {
         assert_eq!(status >> 4, 0xf);
         let message_type = status & 0x0f;
         match message_type {
-            0x2 | 0x3 | 0x6 | 0xf => {
+            0x2 | 0x3 | 0x6 | 0x7 => {
                 let (input, message) = SystemCommonMessage::parse(input, status)?;
                 Ok((input, Self::SystemCommonMessage(message)))
             }
-            0x8 | 0xa | 0xb | 0xc | 0xe => {
+            0x8 | 0xa | 0xb | 0xc | 0xe | 0xf => {
                 let (input, message) = SystemRealTimeMessage::parse(input, status)?;
                 Ok((input, Self::SystemRealTimeMessage(message)))
             }
             _ => panic!("Invalid message type: Got {}", message_type),
+        }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::SystemCommonMessage(message) => message.to_bytes(),
+            Self::SystemRealTimeMessage(message) => message.to_bytes(),
         }
     }
 
@@ -342,6 +438,13 @@ impl MidiMessage {
                 Ok((input, Self::SystemMessage(message)))
             }
             _ => panic!("Invalid message type: Got {}", message_type),
+        }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::ChannelMessage(message) => message.to_bytes(),
+            Self::SystemMessage(message) => message.to_bytes(),
         }
     }
 

@@ -30,6 +30,20 @@ impl SysExEvent {
         ))
     }
 
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.push(self.prefix);
+        let len = VariableLengthQuantity {
+            value: self.data.len() as u32,
+        };
+        bytes.extend(len.to_bytes());
+        bytes.extend(self.data.iter());
+        if let Some(suffix) = self.suffix {
+            bytes.push(suffix);
+        }
+        bytes
+    }
+
     pub fn get_status(&self) -> u8 {
         self.prefix
     }

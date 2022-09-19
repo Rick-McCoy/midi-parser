@@ -177,4 +177,112 @@ impl MetaEvent {
             }
         }
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = vec![0xff];
+        match self {
+            Self::SequenceNumber => {
+                bytes.push(0x00);
+                bytes.push(0x02);
+            }
+            Self::TextEvent { length, text } => {
+                bytes.push(0x01);
+                bytes.extend(length.to_bytes());
+                bytes.extend(text.as_bytes());
+            }
+            Self::CopyrightNotice { length, text } => {
+                bytes.push(0x02);
+                bytes.extend(length.to_bytes());
+                bytes.extend(text.as_bytes());
+            }
+            Self::SequenceOrTrackName { length, text } => {
+                bytes.push(0x03);
+                bytes.extend(length.to_bytes());
+                bytes.extend(text.as_bytes());
+            }
+            Self::InstrumentName { length, text } => {
+                bytes.push(0x04);
+                bytes.extend(length.to_bytes());
+                bytes.extend(text.as_bytes());
+            }
+            Self::Lyric { length, text } => {
+                bytes.push(0x05);
+                bytes.extend(length.to_bytes());
+                bytes.extend(text.as_bytes());
+            }
+            Self::Marker { length, text } => {
+                bytes.push(0x06);
+                bytes.extend(length.to_bytes());
+                bytes.extend(text.as_bytes());
+            }
+            Self::CuePoint { length, text } => {
+                bytes.push(0x07);
+                bytes.extend(length.to_bytes());
+                bytes.extend(text.as_bytes());
+            }
+            Self::MidiChannelPrefix { channel } => {
+                bytes.push(0x20);
+                bytes.push(0x01);
+                bytes.push(*channel);
+            }
+            Self::EndOfTrack => {
+                bytes.push(0x2F);
+                bytes.push(0x00);
+            }
+            Self::SetTempo { tempo } => {
+                bytes.push(0x51);
+                bytes.push(0x03);
+                bytes.extend(&tempo.to_be_bytes()[1..]);
+            }
+            Self::SmpteOffset {
+                hour,
+                minute,
+                second,
+                frame,
+                subframe,
+            } => {
+                bytes.push(0x54);
+                bytes.push(0x05);
+                bytes.push(*hour);
+                bytes.push(*minute);
+                bytes.push(*second);
+                bytes.push(*frame);
+                bytes.push(*subframe);
+            }
+            Self::TimeSignature {
+                numerator,
+                denominator,
+                clocks_per_metronome_click,
+                thirty_seconds_per_quarter_note,
+            } => {
+                bytes.push(0x58);
+                bytes.push(0x04);
+                bytes.push(*numerator);
+                bytes.push(*denominator);
+                bytes.push(*clocks_per_metronome_click);
+                bytes.push(*thirty_seconds_per_quarter_note);
+            }
+            Self::KeySignature { key, scale } => {
+                bytes.push(0x59);
+                bytes.push(0x02);
+                bytes.push(*key);
+                bytes.push(*scale);
+            }
+            Self::SequencerSpecificEvent { length, data } => {
+                bytes.push(0x7F);
+                bytes.extend(length.to_bytes());
+                bytes.extend(data);
+            }
+            Self::UnknownMetaEvent {
+                meta_type,
+                length,
+                data,
+            } => {
+                bytes.push(*meta_type);
+                bytes.extend(length.to_bytes());
+                bytes.extend(data);
+            }
+        }
+        bytes
+    }
 }

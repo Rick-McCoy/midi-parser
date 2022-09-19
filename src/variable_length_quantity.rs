@@ -25,13 +25,17 @@ impl VariableLengthQuantity {
         let mut bytes = Vec::new();
         let mut value = self.value;
         loop {
-            bytes.push((value & 0x7f) as u8);
+            let byte = (value & 0x7f) as u8;
             value >>= 7;
+            if bytes.is_empty() {
+                bytes.push(byte);
+            } else {
+                bytes.push(byte | 0x80);
+            }
             if value == 0 {
                 break;
             }
         }
-        bytes.iter_mut().skip(1).for_each(|byte| *byte |= 0x80);
         bytes.reverse();
         bytes
     }
