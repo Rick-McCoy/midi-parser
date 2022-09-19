@@ -38,4 +38,17 @@ impl TrackChunk {
             },
         ))
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        [
+            self.chunk_type.as_bytes(),
+            &self.length.to_be_bytes(),
+            &self
+                .data
+                .iter()
+                .flat_map(|event| event.to_bytes())
+                .collect::<Vec<u8>>(),
+        ]
+        .concat()
+    }
 }
