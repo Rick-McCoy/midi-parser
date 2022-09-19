@@ -5,6 +5,7 @@ use nom::{
     IResult,
 };
 
+#[derive(PartialEq, Debug)]
 pub struct TrackChunk {
     pub chunk_type: String,
     pub length: u32,

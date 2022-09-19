@@ -1,6 +1,7 @@
 use crate::{header::HeaderChunk, track::TrackChunk};
 use nom::{multi::count, IResult};
 
+#[derive(PartialEq, Debug)]
 pub struct MidiFile {
     pub header: HeaderChunk,
     pub tracks: Vec<TrackChunk>,
@@ -11,16 +12,33 @@ impl MidiFile {
         let (input, header) = HeaderChunk::parse(input)?;
         let ntrks = header.data.ntrks as usize;
         let (input, tracks) = count(TrackChunk::parse, ntrks)(input)?;
+        assert!(input.is_empty());
         Ok((input, Self { header, tracks }))
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        [
+            self.header.to_bytes(),
+            self.tracks
+                .iter()
+                .flat_map(|track| track.to_bytes())
+                .collect::<Vec<u8>>(),
+        ]
+        .concat()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::event::{
-        meta_event::MetaEvent,
-        midi_event::{ChannelMessage, ChannelVoiceMessage, MidiMessage},
-        Event,
+    use crate::{
+        event::{
+            meta_event::MetaEvent,
+            midi_event::{ChannelMessage, ChannelVoiceMessage, MidiMessage},
+            Event, MTrkEvent,
+        },
+        header::{HeaderChunk, HeaderData},
+        track::TrackChunk,
+        variable_length_quantity::VariableLengthQuantity,
     };
 
     use super::MidiFile;
@@ -30,7 +48,7 @@ mod tests {
         let bytes = [
             0x4d, 0x54, 0x68, 0x64, // MThd
             0x00, 0x00, 0x00, 0x06, // header length
-            0x00, 0x00, // format, 0
+            0x00, 0x01, // format, 1
             0x00, 0x04, // ntrks, 4 tracks
             0x00, 0x60, // division, 96 ticks per quarter note
             0x4d, 0x54, 0x72, 0x6b, // MTrk
@@ -62,7 +80,7 @@ mod tests {
         let (_, midi_file) = MidiFile::parse(&bytes).unwrap();
         assert_eq!(midi_file.header.chunk_type, "MThd");
         assert_eq!(midi_file.header.length, 6);
-        assert_eq!(midi_file.header.data.format, 0);
+        assert_eq!(midi_file.header.data.format, 1);
         assert_eq!(midi_file.header.data.ntrks, 4);
         assert_eq!(midi_file.header.data.division, 96);
         assert_eq!(midi_file.tracks.len(), 4);
@@ -231,5 +249,225 @@ mod tests {
             midi_file.tracks[3].data[5].event,
             Event::MetaEvent(MetaEvent::EndOfTrack)
         );
+    }
+
+    #[test]
+    fn test_to_bytes() {
+        let track_1 = TrackChunk {
+            chunk_type: "MTrk".to_string(),
+            length: 20,
+            data: vec![
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MetaEvent(MetaEvent::TimeSignature {
+                        numerator: 4,
+                        denominator: 2,
+                        clocks_per_metronome_click: 24,
+                        thirty_seconds_per_quarter_note: 8,
+                    }),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MetaEvent(MetaEvent::SetTempo { tempo: 500000 }),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 384 },
+                    event: Event::MetaEvent(MetaEvent::EndOfTrack),
+                },
+            ],
+        };
+        let track_2 = TrackChunk {
+            chunk_type: "MTrk".to_string(),
+            length: 16,
+            data: vec![
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::ProgramChange {
+                            channel: 0,
+                            program: 5,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 192 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 0,
+                            note: 76,
+                            velocity: 32,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 192 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 0,
+                            note: 76,
+                            velocity: 0,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MetaEvent(MetaEvent::EndOfTrack),
+                },
+            ],
+        };
+        let track_3 = TrackChunk {
+            chunk_type: "MTrk".to_string(),
+            length: 15,
+            data: vec![
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::ProgramChange {
+                            channel: 1,
+                            program: 46,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 96 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 1,
+                            note: 67,
+                            velocity: 64,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 288 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 1,
+                            note: 67,
+                            velocity: 0,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MetaEvent(MetaEvent::EndOfTrack),
+                },
+            ],
+        };
+        let track_4 = TrackChunk {
+            chunk_type: "MTrk".to_string(),
+            length: 21,
+            data: vec![
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::ProgramChange {
+                            channel: 2,
+                            program: 70,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 2,
+                            note: 48,
+                            velocity: 96,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 2,
+                            note: 60,
+                            velocity: 96,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 384 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 2,
+                            note: 48,
+                            velocity: 0,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MidiEvent(MidiMessage::ChannelMessage(
+                        ChannelMessage::ChannelVoiceMessage(ChannelVoiceMessage::NoteOn {
+                            channel: 2,
+                            note: 60,
+                            velocity: 0,
+                        }),
+                    )),
+                },
+                MTrkEvent {
+                    delta_time: VariableLengthQuantity { value: 0 },
+                    event: Event::MetaEvent(MetaEvent::EndOfTrack),
+                },
+            ],
+        };
+
+        let midi_file = MidiFile {
+            header: HeaderChunk {
+                chunk_type: "MThd".to_string(),
+                length: 6,
+                data: HeaderData {
+                    format: 1,
+                    ntrks: 4,
+                    division: 96,
+                },
+            },
+            tracks: vec![track_1, track_2, track_3, track_4],
+        };
+
+        let bytes = midi_file.to_bytes();
+        assert_eq!(
+            bytes,
+            [
+                0x4d, 0x54, 0x68, 0x64, // MThd
+                0x00, 0x00, 0x00, 0x06, // header length
+                0x00, 0x01, // format, 1
+                0x00, 0x04, // ntrks, 4 tracks
+                0x00, 0x60, // division, 96 ticks per quarter note
+                0x4d, 0x54, 0x72, 0x6b, // MTrk
+                0x00, 0x00, 0x00, 0x14, // chunk length (20 bytes)
+                0x00, 0xff, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08, // time signature
+                0x00, 0xff, 0x51, 0x03, 0x07, 0xa1, 0x20, // tempo
+                0x83, 0x00, 0xff, 0x2f, 0x00, // end of track
+                0x4d, 0x54, 0x72, 0x6b, // MTrk
+                0x00, 0x00, 0x00, 0x10, // chunk length (16 bytes)
+                0x00, 0xc0, 0x05, // program change, channel 0, program 5
+                0x81, 0x40, 0x90, 0x4c, 0x20, // note on, channel 0, note 76, velocity 32
+                0x81, 0x40, 0x90, 0x4c,
+                0x00, // note on, channel 0, note 76, velocity 0 (note off)
+                0x00, 0xff, 0x2f, 0x00, // end of track
+                0x4d, 0x54, 0x72, 0x6b, // MTrk
+                0x00, 0x00, 0x00, 0x0f, // chunk length (15 bytes)
+                0x00, 0xc1, 0x2e, // program change, channel 1, program 46
+                0x60, 0x91, 0x43, 0x40, // note on, channel 1, note 67, velocity 64
+                0x82, 0x20, 0x91, 0x43,
+                0x00, // note on, channel 1, note 67, velocity 0 (note off)
+                0x00, 0xff, 0x2f, 0x00, // end of track
+                0x4d, 0x54, 0x72, 0x6b, // MTrk
+                0x00, 0x00, 0x00, 0x15, // chunk length (21 bytes)
+                0x00, 0xc2, 0x46, // program change, channel 2, program 70
+                0x00, 0x92, 0x30, 0x60, // note on, channel 2, note 48, velocity 96
+                0x00, 0x92, 0x3c, 0x60, // note on, channel 2, note 60, velocity 96
+                0x83, 0x00, 0x92, 0x30,
+                0x00, // note on, channel 2, note 48, velocity 0 (note off)
+                0x00, 0x92, 0x3c, 0x00, // note on, channel 2, note 60, velocity 0 (note off)
+                0x00, 0xff, 0x2f, 0x00, // end of track
+            ]
+        );
+
+        let parsed_midi_file = MidiFile::parse(&bytes).unwrap().1;
+        assert_eq!(midi_file, parsed_midi_file);
     }
 }

@@ -4,6 +4,7 @@ use nom::{
     IResult,
 };
 
+#[derive(PartialEq, Debug)]
 pub struct HeaderData {
     pub format: u16,
     pub ntrks: u16,
@@ -36,6 +37,7 @@ impl HeaderData {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct HeaderChunk {
     pub chunk_type: String,
     pub length: u32,
