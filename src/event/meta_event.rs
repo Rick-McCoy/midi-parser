@@ -7,7 +7,7 @@ use nom::{
 use crate::variable_length_quantity::VariableLengthQuantity;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum MetaEventContent {
+pub enum MetaEvent {
     SequenceNumber,
     TextEvent {
         length: VariableLengthQuantity,
@@ -72,8 +72,9 @@ pub enum MetaEventContent {
     },
 }
 
-impl MetaEventContent {
+impl MetaEvent {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
+        let (input, _) = tag(&[0xff])(input)?;
         let (input, meta_type) = be_u8(input)?;
         match meta_type {
             0x00 => {
@@ -175,18 +176,5 @@ impl MetaEventContent {
                 ))
             }
         }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct MetaEvent {
-    pub content: MetaEventContent,
-}
-
-impl MetaEvent {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, _) = tag(&[0xFF])(input)?;
-        let (input, content) = MetaEventContent::parse(input)?;
-        Ok((input, Self { content }))
     }
 }

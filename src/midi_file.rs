@@ -18,7 +18,7 @@ impl MidiFile {
 #[cfg(test)]
 mod tests {
     use crate::event::{
-        meta_event::{MetaEvent, MetaEventContent},
+        meta_event::MetaEvent,
         midi_event::{ChannelMessage, ChannelVoiceMessage, MidiMessage},
         Event,
     };
@@ -72,28 +72,22 @@ mod tests {
         assert_eq!(midi_file.tracks[0].data[0].delta_time.value, 0);
         assert_eq!(
             midi_file.tracks[0].data[0].event,
-            Event::MetaEvent(MetaEvent {
-                content: MetaEventContent::TimeSignature {
-                    numerator: 4,
-                    denominator: 2,
-                    clocks_per_metronome_click: 24,
-                    thirty_seconds_per_quarter_note: 8,
-                },
+            Event::MetaEvent(MetaEvent::TimeSignature {
+                numerator: 4,
+                denominator: 2,
+                clocks_per_metronome_click: 24,
+                thirty_seconds_per_quarter_note: 8,
             })
         );
         assert_eq!(midi_file.tracks[0].data[1].delta_time.value, 0);
         assert_eq!(
             midi_file.tracks[0].data[1].event,
-            Event::MetaEvent(MetaEvent {
-                content: MetaEventContent::SetTempo { tempo: 500000 },
-            })
+            Event::MetaEvent(MetaEvent::SetTempo { tempo: 500000 })
         );
         assert_eq!(midi_file.tracks[0].data[2].delta_time.value, 384);
         assert_eq!(
             midi_file.tracks[0].data[2].event,
-            Event::MetaEvent(MetaEvent {
-                content: MetaEventContent::EndOfTrack,
-            })
+            Event::MetaEvent(MetaEvent::EndOfTrack)
         );
         assert_eq!(midi_file.tracks[1].chunk_type, "MTrk");
         assert_eq!(midi_file.tracks[1].length, 16);
@@ -133,9 +127,7 @@ mod tests {
         assert_eq!(midi_file.tracks[1].data[3].delta_time.value, 0);
         assert_eq!(
             midi_file.tracks[1].data[3].event,
-            Event::MetaEvent(MetaEvent {
-                content: MetaEventContent::EndOfTrack,
-            })
+            Event::MetaEvent(MetaEvent::EndOfTrack)
         );
         assert_eq!(midi_file.tracks[2].chunk_type, "MTrk");
         assert_eq!(midi_file.tracks[2].length, 15);
@@ -175,9 +167,7 @@ mod tests {
         assert_eq!(midi_file.tracks[2].data[3].delta_time.value, 0);
         assert_eq!(
             midi_file.tracks[2].data[3].event,
-            Event::MetaEvent(MetaEvent {
-                content: MetaEventContent::EndOfTrack,
-            })
+            Event::MetaEvent(MetaEvent::EndOfTrack)
         );
         assert_eq!(midi_file.tracks[3].chunk_type, "MTrk");
         assert_eq!(midi_file.tracks[3].length, 21);
@@ -239,9 +229,7 @@ mod tests {
         assert_eq!(midi_file.tracks[3].data[5].delta_time.value, 0);
         assert_eq!(
             midi_file.tracks[3].data[5].event,
-            Event::MetaEvent(MetaEvent {
-                content: MetaEventContent::EndOfTrack,
-            })
+            Event::MetaEvent(MetaEvent::EndOfTrack)
         );
     }
 }
