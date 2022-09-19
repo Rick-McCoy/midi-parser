@@ -37,83 +37,9 @@ pub enum ChannelVoiceMessage {
 }
 
 impl ChannelVoiceMessage {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, status) = be_u8(input)?;
+    pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
         let message_type = status >> 4;
         let channel = status & 0x0f;
-        match message_type {
-            0x8 => {
-                let (input, note) = be_u8(input)?;
-                let (input, velocity) = be_u8(input)?;
-                Ok((
-                    input,
-                    Self::NoteOff {
-                        channel,
-                        note,
-                        velocity,
-                    },
-                ))
-            }
-            0x9 => {
-                let (input, note) = be_u8(input)?;
-                let (input, velocity) = be_u8(input)?;
-                Ok((
-                    input,
-                    Self::NoteOn {
-                        channel,
-                        note,
-                        velocity,
-                    },
-                ))
-            }
-            0xa => {
-                let (input, note) = be_u8(input)?;
-                let (input, pressure) = be_u8(input)?;
-                Ok((
-                    input,
-                    Self::PolyphonicKeyPressure {
-                        channel,
-                        note,
-                        pressure,
-                    },
-                ))
-            }
-            0xb => {
-                let (input, controller) = be_u8(input)?;
-                let (input, value) = be_u8(input)?;
-                Ok((
-                    input,
-                    Self::ControlChange {
-                        channel,
-                        controller,
-                        value,
-                    },
-                ))
-            }
-            0xc => {
-                let (input, program) = be_u8(input)?;
-                Ok((input, Self::ProgramChange { channel, program }))
-            }
-            0xd => {
-                let (input, pressure) = be_u8(input)?;
-                Ok((input, Self::ChannelPressure { channel, pressure }))
-            }
-            0xe => {
-                let (input, lsb) = be_u8(input)?;
-                let (input, msb) = be_u8(input)?;
-                let value = ((msb as u16) << 7) | (lsb as u16);
-                Ok((input, Self::PitchBendChange { channel, value }))
-            }
-            _ => panic!(
-                "Invalid message type: Got {} while parsing [{}, {}, {}, ...]",
-                message_type, input[0], input[1], input[2]
-            ),
-        }
-    }
-
-    pub fn parse_with_running_status(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
-        let message_type = running_status >> 4;
-        let channel = running_status & 0x0f;
         match message_type {
             0x8 => {
                 let (input, note) = be_u8(input)?;
@@ -235,18 +161,9 @@ pub struct ChannelModeMessage {
 }
 
 impl ChannelModeMessage {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, status) = be_u8(input)?;
+    pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
         let message_type = status >> 4;
         let channel = status & 0x0f;
-        assert_eq!(message_type, 0xb);
-        let (input, message) = ModeMessage::parse(input)?;
-        Ok((input, Self { channel, message }))
-    }
-
-    pub fn parse_with_running_status(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
-        let message_type = running_status >> 4;
-        let channel = running_status & 0x0f;
         assert_eq!(message_type, 0xb);
         let (input, message) = ModeMessage::parse(input)?;
         Ok((input, Self { channel, message }))
@@ -264,53 +181,22 @@ pub enum ChannelMessage {
 }
 
 impl ChannelMessage {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, status) = peek(be_u8)(input)?;
+    pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
         let message_type = status >> 4;
         match message_type {
             0x8 | 0x9 | 0xa | 0xc | 0xd | 0xe => {
-                let (input, message) = ChannelVoiceMessage::parse(input)?;
+                let (input, message) = ChannelVoiceMessage::parse(input, status)?;
                 Ok((input, Self::ChannelVoiceMessage(message)))
             }
             0xb => {
                 let (input, (_, controller)) = peek(tuple((be_u8, be_u8)))(input)?;
                 match controller {
                     0x7a | 0x7b | 0x7c | 0x7d | 0x7e | 0x7f => {
-                        let (input, message) = ChannelModeMessage::parse(input)?;
+                        let (input, message) = ChannelModeMessage::parse(input, status)?;
                         Ok((input, Self::ChannelModeMessage(message)))
                     }
                     _ => {
-                        let (input, message) = ChannelVoiceMessage::parse(input)?;
-                        Ok((input, Self::ChannelVoiceMessage(message)))
-                    }
-                }
-            }
-            _ => panic!(
-                "Invalid message type: Got {} while parsing [{}, {}, {}, ...]",
-                message_type, input[0], input[1], input[2]
-            ),
-        }
-    }
-
-    pub fn parse_with_running_status(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
-        let message_type = running_status >> 4;
-        match message_type {
-            0x8 | 0x9 | 0xa | 0xc | 0xd | 0xe => {
-                let (input, message) =
-                    ChannelVoiceMessage::parse_with_running_status(input, running_status)?;
-                Ok((input, Self::ChannelVoiceMessage(message)))
-            }
-            0xb => {
-                let (input, (_, controller)) = peek(tuple((be_u8, be_u8)))(input)?;
-                match controller {
-                    0x7a | 0x7b | 0x7c | 0x7d | 0x7e | 0x7f => {
-                        let (input, message) =
-                            ChannelModeMessage::parse_with_running_status(input, running_status)?;
-                        Ok((input, Self::ChannelModeMessage(message)))
-                    }
-                    _ => {
-                        let (input, message) =
-                            ChannelVoiceMessage::parse_with_running_status(input, running_status)?;
+                        let (input, message) = ChannelVoiceMessage::parse(input, status)?;
                         Ok((input, Self::ChannelVoiceMessage(message)))
                     }
                 }
@@ -339,30 +225,9 @@ pub enum SystemCommonMessage {
 }
 
 impl SystemCommonMessage {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, status) = be_u8(input)?;
+    pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
         assert_eq!(status >> 4, 0xf);
         let message_type = status & 0x0f;
-        match message_type {
-            0x2 => {
-                let (input, lsb) = be_u8(input)?;
-                let (input, msb) = be_u8(input)?;
-                let value = ((msb as u16) << 7) | (lsb as u16);
-                Ok((input, Self::SongPositionPointer { value }))
-            }
-            0x3 => {
-                let (input, song) = be_u8(input)?;
-                Ok((input, Self::SongSelect { song }))
-            }
-            0x6 => Ok((input, Self::TuneRequest)),
-            0xf => Ok((input, Self::EndOfExclusive)),
-            _ => panic!("Invalid message type: Got {}", message_type),
-        }
-    }
-
-    pub fn parse_with_running_status(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
-        assert_eq!(running_status >> 4, 0xf);
-        let message_type = running_status & 0x0f;
         match message_type {
             0x2 => {
                 let (input, lsb) = be_u8(input)?;
@@ -401,24 +266,9 @@ pub enum SystemRealTimeMessage {
 }
 
 impl SystemRealTimeMessage {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, status) = be_u8(input)?;
+    pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
         assert_eq!(status >> 4, 0xf);
         let message_type = status & 0x0f;
-        match message_type {
-            0x8 => Ok((input, Self::TimingClock)),
-            0xa => Ok((input, Self::Start)),
-            0xb => Ok((input, Self::Continue)),
-            0xc => Ok((input, Self::Stop)),
-            0xe => Ok((input, Self::ActiveSensing)),
-            0xf => Ok((input, Self::SystemReset)),
-            _ => panic!("Invalid message type: Got {}", message_type),
-        }
-    }
-
-    pub fn parse_with_running_status(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
-        assert_eq!(running_status >> 4, 0xf);
-        let message_type = running_status & 0x0f;
         match message_type {
             0x8 => Ok((input, Self::TimingClock)),
             0xa => Ok((input, Self::Start)),
@@ -449,34 +299,16 @@ pub enum SystemMessage {
 }
 
 impl SystemMessage {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, status) = peek(be_u8)(input)?;
+    pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
         assert_eq!(status >> 4, 0xf);
         let message_type = status & 0x0f;
         match message_type {
             0x2 | 0x3 | 0x6 | 0xf => {
-                let (input, message) = SystemCommonMessage::parse(input)?;
+                let (input, message) = SystemCommonMessage::parse(input, status)?;
                 Ok((input, Self::SystemCommonMessage(message)))
             }
             0x8 | 0xa | 0xb | 0xc | 0xe => {
-                let (input, message) = SystemRealTimeMessage::parse(input)?;
-                Ok((input, Self::SystemRealTimeMessage(message)))
-            }
-            _ => panic!("Invalid message type: Got {}", message_type),
-        }
-    }
-
-    pub fn parse_with_running_status(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
-        let message_type = running_status & 0x0f;
-        match message_type {
-            0x2 | 0x3 | 0x6 | 0xf => {
-                let (input, message) =
-                    SystemCommonMessage::parse_with_running_status(input, running_status)?;
-                Ok((input, Self::SystemCommonMessage(message)))
-            }
-            0x8 | 0xa | 0xb | 0xc | 0xe => {
-                let (input, message) =
-                    SystemRealTimeMessage::parse_with_running_status(input, running_status)?;
+                let (input, message) = SystemRealTimeMessage::parse(input, status)?;
                 Ok((input, Self::SystemRealTimeMessage(message)))
             }
             _ => panic!("Invalid message type: Got {}", message_type),
@@ -498,38 +330,15 @@ pub enum MidiMessage {
 }
 
 impl MidiMessage {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, status) = peek(be_u8)(input)?;
-        if status & 0x80 == 0x00 {
-            let (input, message) = ChannelMessage::parse(input)?;
-            Ok((input, Self::ChannelMessage(message)))
-        } else {
-            let message_type = status >> 4;
-            match message_type {
-                0x8 | 0x9 | 0xa | 0xb | 0xc | 0xd | 0xe => {
-                    let (input, message) = ChannelMessage::parse(input)?;
-                    Ok((input, Self::ChannelMessage(message)))
-                }
-                0xf => {
-                    let (input, message) = SystemMessage::parse(input)?;
-                    Ok((input, Self::SystemMessage(message)))
-                }
-                _ => panic!("Invalid message type: Got {}", message_type),
-            }
-        }
-    }
-
-    pub fn parse_with_running_status(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
-        let message_type = running_status >> 4;
+    pub fn parse(input: &[u8], status: u8) -> IResult<&[u8], Self> {
+        let message_type = status >> 4;
         match message_type {
             0x8 | 0x9 | 0xa | 0xb | 0xc | 0xd | 0xe => {
-                let (input, message) =
-                    ChannelMessage::parse_with_running_status(input, running_status)?;
+                let (input, message) = ChannelMessage::parse(input, status)?;
                 Ok((input, Self::ChannelMessage(message)))
             }
             0xf => {
-                let (input, message) =
-                    SystemMessage::parse_with_running_status(input, running_status)?;
+                let (input, message) = SystemMessage::parse(input, status)?;
                 Ok((input, Self::SystemMessage(message)))
             }
             _ => panic!("Invalid message type: Got {}", message_type),

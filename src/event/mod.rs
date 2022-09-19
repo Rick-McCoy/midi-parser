@@ -16,24 +16,25 @@ pub enum Event {
 impl Event {
     pub fn parse(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
         let (input, status) = peek(be_u8)(input)?;
-        if status & 0x80 != 0x00 {
-            match status {
-                0xF0 | 0xF7 => {
-                    let (input, event) = SysExEvent::parse(input)?;
-                    Ok((input, Self::SysExEvent(event)))
-                }
-                0xFF => {
-                    let (input, event) = MetaEvent::parse(input)?;
-                    Ok((input, Self::MetaEvent(event)))
-                }
-                _ => {
-                    let (input, event) = MidiMessage::parse(input)?;
+        match status {
+            0xF0 | 0xF7 => {
+                let (input, event) = SysExEvent::parse(input)?;
+                Ok((input, Self::SysExEvent(event)))
+            }
+            0xFF => {
+                let (input, event) = MetaEvent::parse(input)?;
+                Ok((input, Self::MetaEvent(event)))
+            }
+            _ => {
+                if status & 0x80 == 0 {
+                    let (input, event) = MidiMessage::parse(input, running_status)?;
+                    Ok((input, Self::MidiEvent(event)))
+                } else {
+                    let (input, status) = be_u8(input)?;
+                    let (input, event) = MidiMessage::parse(input, status)?;
                     Ok((input, Self::MidiEvent(event)))
                 }
             }
-        } else {
-            let (input, event) = MidiMessage::parse_with_running_status(input, running_status)?;
-            Ok((input, Self::MidiEvent(event)))
         }
     }
 
@@ -57,5 +58,9 @@ impl MTrkEvent {
         let (input, delta_time) = VariableLengthQuantity::parse(input)?;
         let (input, event) = Event::parse(input, running_status)?;
         Ok((input, Self { delta_time, event }))
+    }
+
+    pub fn get_status(&self) -> u8 {
+        self.event.get_status()
     }
 }

@@ -22,7 +22,7 @@ impl TrackChunk {
             let (remaining, event) = MTrkEvent::parse(
                 bytes,
                 match data.last() {
-                    Some(event) => event.event.get_status(),
+                    Some(event) => event.get_status(),
                     None => 0xff,
                 },
             )?;
