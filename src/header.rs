@@ -25,6 +25,15 @@ impl HeaderData {
             },
         ))
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        [
+            self.format.to_be_bytes(),
+            self.ntrks.to_be_bytes(),
+            self.division.to_be_bytes(),
+        ]
+        .concat()
+    }
 }
 
 pub struct HeaderChunk {
@@ -47,5 +56,14 @@ impl HeaderChunk {
                 data,
             },
         ))
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        [
+            self.chunk_type.as_bytes(),
+            &self.length.to_be_bytes(),
+            &self.data.to_bytes(),
+        ]
+        .concat()
     }
 }
