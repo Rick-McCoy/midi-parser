@@ -278,7 +278,7 @@ mod tests {
         };
         let track_2 = TrackChunk {
             chunk_type: "MTrk".to_string(),
-            length: 16,
+            length: 17,
             data: vec![
                 MTrkEvent {
                     delta_time: VariableLengthQuantity { value: 0 },
@@ -317,7 +317,7 @@ mod tests {
         };
         let track_3 = TrackChunk {
             chunk_type: "MTrk".to_string(),
-            length: 15,
+            length: 16,
             data: vec![
                 MTrkEvent {
                     delta_time: VariableLengthQuantity { value: 0 },
@@ -356,7 +356,7 @@ mod tests {
         };
         let track_4 = TrackChunk {
             chunk_type: "MTrk".to_string(),
-            length: 21,
+            length: 24,
             data: vec![
                 MTrkEvent {
                     delta_time: VariableLengthQuantity { value: 0 },
@@ -442,21 +442,21 @@ mod tests {
                 0x00, 0xff, 0x51, 0x03, 0x07, 0xa1, 0x20, // tempo
                 0x83, 0x00, 0xff, 0x2f, 0x00, // end of track
                 0x4d, 0x54, 0x72, 0x6b, // MTrk
-                0x00, 0x00, 0x00, 0x10, // chunk length (16 bytes)
+                0x00, 0x00, 0x00, 0x11, // chunk length (17 bytes)
                 0x00, 0xc0, 0x05, // program change, channel 0, program 5
                 0x81, 0x40, 0x90, 0x4c, 0x20, // note on, channel 0, note 76, velocity 32
                 0x81, 0x40, 0x90, 0x4c,
                 0x00, // note on, channel 0, note 76, velocity 0 (note off)
                 0x00, 0xff, 0x2f, 0x00, // end of track
                 0x4d, 0x54, 0x72, 0x6b, // MTrk
-                0x00, 0x00, 0x00, 0x0f, // chunk length (15 bytes)
+                0x00, 0x00, 0x00, 0x10, // chunk length (16 bytes)
                 0x00, 0xc1, 0x2e, // program change, channel 1, program 46
                 0x60, 0x91, 0x43, 0x40, // note on, channel 1, note 67, velocity 64
                 0x82, 0x20, 0x91, 0x43,
                 0x00, // note on, channel 1, note 67, velocity 0 (note off)
                 0x00, 0xff, 0x2f, 0x00, // end of track
                 0x4d, 0x54, 0x72, 0x6b, // MTrk
-                0x00, 0x00, 0x00, 0x15, // chunk length (21 bytes)
+                0x00, 0x00, 0x00, 0x18, // chunk length (24 bytes)
                 0x00, 0xc2, 0x46, // program change, channel 2, program 70
                 0x00, 0x92, 0x30, 0x60, // note on, channel 2, note 48, velocity 96
                 0x00, 0x92, 0x3c, 0x60, // note on, channel 2, note 60, velocity 96
