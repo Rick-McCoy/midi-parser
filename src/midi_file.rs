@@ -36,7 +36,7 @@ mod tests {
             midi_event::{ChannelMessage, ChannelVoiceMessage, MidiMessage},
             Event, MTrkEvent,
         },
-        header::{HeaderChunk, HeaderData},
+        header::{Division, HeaderChunk, HeaderData},
         track::TrackChunk,
         variable_length_quantity::VariableLengthQuantity,
     };
@@ -82,7 +82,10 @@ mod tests {
         assert_eq!(midi_file.header.length, 6);
         assert_eq!(midi_file.header.data.format, 1);
         assert_eq!(midi_file.header.data.ntrks, 4);
-        assert_eq!(midi_file.header.data.division, 96);
+        assert_eq!(
+            midi_file.header.data.division,
+            Division::TicksPerQuarterNote { ticks: 96 }
+        );
         assert_eq!(midi_file.tracks.len(), 4);
         assert_eq!(midi_file.tracks[0].chunk_type, "MTrk");
         assert_eq!(midi_file.tracks[0].length, 20);
@@ -421,7 +424,7 @@ mod tests {
                 data: HeaderData {
                     format: 1,
                     ntrks: 4,
-                    division: 96,
+                    division: Division::TicksPerQuarterNote { ticks: 96 },
                 },
             },
             tracks: vec![track_1, track_2, track_3, track_4],
