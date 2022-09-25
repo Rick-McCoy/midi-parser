@@ -17,9 +17,11 @@ pub struct SysExEvent {
 impl SysExEvent {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
         let (input, prefix) = be_u8(input)?;
+        assert_eq!(prefix, 0xf0);
         let (input, len) = VariableLengthQuantity::parse(input)?;
         let (input, data) = take(len.value as usize)(input)?;
-        let (input, suffix) = opt(tag(&[0xF7]))(input)?;
+        data.iter().for_each(|byte| assert_ne!(*byte & 0x80, 0x80));
+        let (input, suffix) = opt(tag(&[0xf7]))(input)?;
         Ok((
             input,
             Self {

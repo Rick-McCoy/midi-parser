@@ -1,4 +1,4 @@
-use crate::event::MTrkEvent;
+use crate::event::{meta_event::MetaEvent, Event, MTrkEvent};
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
@@ -30,6 +30,8 @@ impl TrackChunk {
             data.push(event);
             bytes = remaining;
         }
+        let last_event = data.last().unwrap().event.clone();
+        assert!(last_event == Event::MetaEvent(MetaEvent::EndOfTrack));
         Ok((
             input,
             Self {

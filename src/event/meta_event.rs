@@ -104,7 +104,7 @@ impl MetaEvent {
                 let (input, channel) = be_u8(input)?;
                 Ok((input, Self::MidiChannelPrefix { channel }))
             }
-            0x2F => {
+            0x2f => {
                 let (input, _) = tag(&[0x00])(input)?;
                 Ok((input, Self::EndOfTrack))
             }
@@ -152,7 +152,7 @@ impl MetaEvent {
                     },
                 ))
             }
-            0x7F => {
+            0x7f => {
                 let (input, length) = VariableLengthQuantity::parse(input)?;
                 let (input, data) = take(length.value as usize)(input)?;
                 Ok((
@@ -226,7 +226,7 @@ impl MetaEvent {
                 bytes.push(*channel);
             }
             Self::EndOfTrack => {
-                bytes.push(0x2F);
+                bytes.push(0x2f);
                 bytes.push(0x00);
             }
             Self::SetTempo { tempo } => {
@@ -269,7 +269,7 @@ impl MetaEvent {
                 bytes.push(*scale);
             }
             Self::SequencerSpecificEvent { length, data } => {
-                bytes.push(0x7F);
+                bytes.push(0x7f);
                 bytes.extend(length.to_bytes());
                 bytes.extend(data);
             }

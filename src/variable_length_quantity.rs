@@ -13,9 +13,15 @@ impl VariableLengthQuantity {
         let (input, (byte_prefix, last_byte)) =
             tuple((take_while(|byte| byte & 0x80 != 0), take(1usize)))(input)?;
 
+        assert!(last_byte.len() == 1);
+        let last_byte = last_byte[0];
+        assert!(last_byte & 0x80 == 0);
+
+        assert!(byte_prefix.len() < 4);
+
         let value = byte_prefix
             .iter()
-            .chain(last_byte.iter())
+            .chain(std::iter::once(&last_byte))
             .fold(0, |acc, byte| (acc << 7) | (byte & 0x7f) as u32);
 
         Ok((input, Self { value }))

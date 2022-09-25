@@ -17,16 +17,20 @@ impl Event {
     pub fn parse(input: &[u8], running_status: u8) -> IResult<&[u8], Self> {
         let (input, status) = peek(be_u8)(input)?;
         match status {
-            0xF0 | 0xF7 => {
+            0xf0 | 0xf7 => {
                 let (input, event) = SysExEvent::parse(input)?;
                 Ok((input, Self::SysExEvent(event)))
             }
-            0xFF => {
+            0xff => {
                 let (input, event) = MetaEvent::parse(input)?;
                 Ok((input, Self::MetaEvent(event)))
             }
             _ => {
                 if status & 0x80 == 0 {
+                    assert_eq!(running_status & 0x80, 0x80);
+                    assert_ne!(running_status, 0xf0);
+                    assert_ne!(running_status, 0xf7);
+                    assert_ne!(running_status, 0xff);
                     let (input, event) = MidiMessage::parse(input, running_status)?;
                     Ok((input, Self::MidiEvent(event)))
                 } else {
