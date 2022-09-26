@@ -44,6 +44,8 @@ impl ChannelVoiceMessage {
             0x8 => {
                 let (input, note) = be_u8(input)?;
                 let (input, velocity) = be_u8(input)?;
+                assert_eq!(note & 0x80, 0);
+                assert_eq!(velocity & 0x80, 0);
                 Ok((
                     input,
                     Self::NoteOff {
@@ -56,6 +58,8 @@ impl ChannelVoiceMessage {
             0x9 => {
                 let (input, note) = be_u8(input)?;
                 let (input, velocity) = be_u8(input)?;
+                assert_eq!(note & 0x80, 0);
+                assert_eq!(velocity & 0x80, 0);
                 Ok((
                     input,
                     Self::NoteOn {
@@ -68,6 +72,8 @@ impl ChannelVoiceMessage {
             0xa => {
                 let (input, note) = be_u8(input)?;
                 let (input, pressure) = be_u8(input)?;
+                assert_eq!(note & 0x80, 0);
+                assert_eq!(pressure & 0x80, 0);
                 Ok((
                     input,
                     Self::PolyphonicKeyPressure {
@@ -80,6 +86,8 @@ impl ChannelVoiceMessage {
             0xb => {
                 let (input, controller) = be_u8(input)?;
                 let (input, value) = be_u8(input)?;
+                assert_eq!(controller & 0x80, 0);
+                assert_eq!(value & 0x80, 0);
                 Ok((
                     input,
                     Self::ControlChange {
@@ -91,58 +99,49 @@ impl ChannelVoiceMessage {
             }
             0xc => {
                 let (input, program) = be_u8(input)?;
+                assert_eq!(program & 0x80, 0);
                 Ok((input, Self::ProgramChange { channel, program }))
             }
             0xd => {
                 let (input, pressure) = be_u8(input)?;
+                assert_eq!(pressure & 0x80, 0);
                 Ok((input, Self::ChannelPressure { channel, pressure }))
             }
             0xe => {
                 let (input, lsb) = be_u8(input)?;
                 let (input, msb) = be_u8(input)?;
+                assert_eq!(lsb & 0x80, 0);
+                assert_eq!(msb & 0x80, 0);
                 let value = ((msb as u16) << 7) | (lsb as u16);
                 Ok((input, Self::PitchBendChange { channel, value }))
             }
-            _ => panic!(
-                "Invalid message type: Got {} while parsing [{}, {}, {}, ...]",
-                message_type, input[0], input[1], input[2]
-            ),
+            _ => unreachable!(),
         }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = vec![self.get_status()];
         match self {
-            Self::NoteOff { note, velocity, .. } => {
-                bytes.push(*note);
-                bytes.push(*velocity);
-            }
-            Self::NoteOn { note, velocity, .. } => {
-                bytes.push(*note);
-                bytes.push(*velocity);
+            Self::NoteOff { note, velocity, .. } | Self::NoteOn { note, velocity, .. } => {
+                vec![self.get_status(), *note, *velocity]
             }
             Self::PolyphonicKeyPressure { note, pressure, .. } => {
-                bytes.push(*note);
-                bytes.push(*pressure);
+                vec![self.get_status(), *note, *pressure]
             }
             Self::ControlChange {
                 controller, value, ..
             } => {
-                bytes.push(*controller);
-                bytes.push(*value);
+                vec![self.get_status(), *controller, *value]
             }
             Self::ProgramChange { program, .. } => {
-                bytes.push(*program);
+                vec![self.get_status(), *program]
             }
             Self::ChannelPressure { pressure, .. } => {
-                bytes.push(*pressure);
+                vec![self.get_status(), *pressure]
             }
             Self::PitchBendChange { value, .. } => {
-                bytes.push((value & 0x7f) as u8);
-                bytes.push((value >> 7) as u8);
+                vec![self.get_status(), (value & 0x7f) as u8, (value >> 7) as u8]
             }
         }
-        bytes
     }
 
     pub fn get_status(&self) -> u8 {
@@ -184,25 +183,20 @@ impl ModeMessage {
             0x7d => Ok((input, Self::OmniModeOn)),
             0x7e => Ok((input, Self::MonoModeOn { n: value })),
             0x7f => Ok((input, Self::PolyModeOn)),
-            _ => panic!("Invalid data1: Got {}", controller),
+            _ => panic!("Invalid controller: Got {}", controller),
         }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = vec![0xb0, 0x7f, 0x00];
         match self {
-            Self::LocalControlOff => (),
-            Self::LocalControlOn => bytes[2] = 0x7f,
-            Self::AllNotesOff => bytes[1] = 0x7b,
-            Self::OmniModeOff => bytes[1] = 0x7c,
-            Self::OmniModeOn => bytes[1] = 0x7d,
-            Self::MonoModeOn { n } => {
-                bytes[1] = 0x7e;
-                bytes[2] = *n;
-            }
-            Self::PolyModeOn => bytes[1] = 0x7f,
+            Self::LocalControlOff => vec![0x7f, 0x00],
+            Self::LocalControlOn => vec![0x7f, 0x7f],
+            Self::AllNotesOff => vec![0x7b, 0x00],
+            Self::OmniModeOff => vec![0x7c, 0x00],
+            Self::OmniModeOn => vec![0x7d, 0x00],
+            Self::MonoModeOn { n } => vec![0x7e, *n],
+            Self::PolyModeOn => vec![0x7f, 0x00],
         }
-        bytes
     }
 }
 
@@ -222,9 +216,7 @@ impl ChannelModeMessage {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = self.message.to_bytes();
-        bytes[0] = self.get_status();
-        bytes
+        [vec![self.get_status()], self.message.to_bytes()].concat()
     }
 
     pub fn get_status(&self) -> u8 {
@@ -259,10 +251,7 @@ impl ChannelMessage {
                     }
                 }
             }
-            _ => panic!(
-                "Invalid message type: Got {} while parsing [{}, {}, {}, ...]",
-                message_type, input[0], input[1], input[2]
-            ),
+            _ => unreachable!(),
         }
     }
 
@@ -297,25 +286,26 @@ impl SystemCommonMessage {
             0x2 => {
                 let (input, lsb) = be_u8(input)?;
                 let (input, msb) = be_u8(input)?;
+                assert_eq!(lsb & 0x80, 0);
+                assert_eq!(msb & 0x80, 0);
                 let value = ((msb as u16) << 7) | (lsb as u16);
                 Ok((input, Self::SongPositionPointer { value }))
             }
             0x3 => {
                 let (input, song) = be_u8(input)?;
+                assert_eq!(song & 0x80, 0);
                 Ok((input, Self::SongSelect { song }))
             }
             0x6 => Ok((input, Self::TuneRequest)),
             0x7 => Ok((input, Self::EndOfExclusive)),
-            _ => panic!("Invalid message type: Got {}", message_type),
+            _ => unreachable!(),
         }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             Self::SongPositionPointer { value } => {
-                let lsb = (value & 0x7f) as u8;
-                let msb = ((value >> 7) & 0x7f) as u8;
-                vec![0xf2, lsb, msb]
+                vec![0xf2, (value & 0x7f) as u8, ((value >> 7) & 0x7f) as u8]
             }
             Self::SongSelect { song } => vec![0xf3, *song],
             Self::TuneRequest => vec![0xf6],
@@ -354,7 +344,7 @@ impl SystemRealTimeMessage {
             0xc => Ok((input, Self::Stop)),
             0xe => Ok((input, Self::ActiveSensing)),
             0xf => Ok((input, Self::SystemReset)),
-            _ => panic!("Invalid message type: Got {}", message_type),
+            _ => unreachable!(),
         }
     }
 
@@ -400,7 +390,7 @@ impl SystemMessage {
                 let (input, message) = SystemRealTimeMessage::parse(input, status)?;
                 Ok((input, Self::SystemRealTimeMessage(message)))
             }
-            _ => panic!("Invalid message type: Got {}", message_type),
+            _ => unreachable!(),
         }
     }
 

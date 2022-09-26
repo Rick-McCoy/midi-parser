@@ -179,60 +179,34 @@ impl MetaEvent {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = vec![0xff];
         match self {
-            Self::SequenceNumber => {
-                bytes.push(0x00);
-                bytes.push(0x02);
-            }
+            Self::SequenceNumber => vec![0xff, 0x00, 0x02],
             Self::TextEvent { length, text } => {
-                bytes.push(0x01);
-                bytes.extend(length.to_bytes());
-                bytes.extend(text.as_bytes());
+                [&[0xff, 0x01], length.to_bytes().as_slice(), text.as_bytes()].concat()
             }
             Self::CopyrightNotice { length, text } => {
-                bytes.push(0x02);
-                bytes.extend(length.to_bytes());
-                bytes.extend(text.as_bytes());
+                [&[0xff, 0x02], length.to_bytes().as_slice(), text.as_bytes()].concat()
             }
             Self::SequenceOrTrackName { length, text } => {
-                bytes.push(0x03);
-                bytes.extend(length.to_bytes());
-                bytes.extend(text.as_bytes());
+                [&[0xff, 0x03], length.to_bytes().as_slice(), text.as_bytes()].concat()
             }
             Self::InstrumentName { length, text } => {
-                bytes.push(0x04);
-                bytes.extend(length.to_bytes());
-                bytes.extend(text.as_bytes());
+                [&[0xff, 0x04], length.to_bytes().as_slice(), text.as_bytes()].concat()
             }
             Self::Lyric { length, text } => {
-                bytes.push(0x05);
-                bytes.extend(length.to_bytes());
-                bytes.extend(text.as_bytes());
+                [&[0xff, 0x05], length.to_bytes().as_slice(), text.as_bytes()].concat()
             }
             Self::Marker { length, text } => {
-                bytes.push(0x06);
-                bytes.extend(length.to_bytes());
-                bytes.extend(text.as_bytes());
+                [&[0xff, 0x06], length.to_bytes().as_slice(), text.as_bytes()].concat()
             }
             Self::CuePoint { length, text } => {
-                bytes.push(0x07);
-                bytes.extend(length.to_bytes());
-                bytes.extend(text.as_bytes());
+                [&[0xff, 0x07], length.to_bytes().as_slice(), text.as_bytes()].concat()
             }
-            Self::MidiChannelPrefix { channel } => {
-                bytes.push(0x20);
-                bytes.push(0x01);
-                bytes.push(*channel);
-            }
-            Self::EndOfTrack => {
-                bytes.push(0x2f);
-                bytes.push(0x00);
-            }
+            Self::MidiChannelPrefix { channel } => vec![0xff, 0x20, 0x01, *channel],
+            Self::EndOfTrack => vec![0xff, 0x2f, 0x00],
             Self::SetTempo { tempo } => {
-                bytes.push(0x51);
-                bytes.push(0x03);
-                bytes.extend(&tempo.to_be_bytes()[1..]);
+                let tempo = tempo.to_be_bytes();
+                vec![0xff, 0x51, 0x03, tempo[1], tempo[2], tempo[3]]
             }
             Self::SmpteOffset {
                 hour,
@@ -240,49 +214,33 @@ impl MetaEvent {
                 second,
                 frame,
                 subframe,
-            } => {
-                bytes.push(0x54);
-                bytes.push(0x05);
-                bytes.push(*hour);
-                bytes.push(*minute);
-                bytes.push(*second);
-                bytes.push(*frame);
-                bytes.push(*subframe);
-            }
+            } => vec![0xff, 0x54, 0x05, *hour, *minute, *second, *frame, *subframe],
+
             Self::TimeSignature {
                 numerator,
                 denominator,
                 clocks_per_metronome_click,
                 thirty_seconds_per_quarter_note,
             } => {
-                bytes.push(0x58);
-                bytes.push(0x04);
-                bytes.push(*numerator);
-                bytes.push(*denominator);
-                bytes.push(*clocks_per_metronome_click);
-                bytes.push(*thirty_seconds_per_quarter_note);
+                vec![
+                    0xff,
+                    0x58,
+                    0x04,
+                    *numerator,
+                    *denominator,
+                    *clocks_per_metronome_click,
+                    *thirty_seconds_per_quarter_note,
+                ]
             }
-            Self::KeySignature { key, scale } => {
-                bytes.push(0x59);
-                bytes.push(0x02);
-                bytes.push(*key);
-                bytes.push(*scale);
-            }
+            Self::KeySignature { key, scale } => vec![0xff, 0x59, 0x02, *key, *scale],
             Self::SequencerSpecificEvent { length, data } => {
-                bytes.push(0x7f);
-                bytes.extend(length.to_bytes());
-                bytes.extend(data);
+                [&[0xff, 0x7f], length.to_bytes().as_slice(), data].concat()
             }
             Self::UnknownMetaEvent {
                 meta_type,
                 length,
                 data,
-            } => {
-                bytes.push(*meta_type);
-                bytes.extend(length.to_bytes());
-                bytes.extend(data);
-            }
+            } => [&[0xff, *meta_type], length.to_bytes().as_slice(), data].concat(),
         }
-        bytes
     }
 }

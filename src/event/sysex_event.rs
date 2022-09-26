@@ -1,7 +1,6 @@
 use nom::{
     bytes::complete::{tag, take},
     combinator::opt,
-    number::complete::be_u8,
     IResult,
 };
 
@@ -16,8 +15,7 @@ pub struct SysExEvent {
 
 impl SysExEvent {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, prefix) = be_u8(input)?;
-        assert_eq!(prefix, 0xf0);
+        let (input, prefix) = tag(&[0xf0])(input)?;
         let (input, len) = VariableLengthQuantity::parse(input)?;
         let (input, data) = take(len.value as usize)(input)?;
         data.iter().for_each(|byte| assert_ne!(*byte & 0x80, 0x80));
@@ -25,7 +23,7 @@ impl SysExEvent {
         Ok((
             input,
             Self {
-                prefix,
+                prefix: prefix[0],
                 data: data.to_vec(),
                 suffix: suffix.map(|x| x[0]),
             },

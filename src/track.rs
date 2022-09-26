@@ -17,9 +17,10 @@ impl TrackChunk {
         let (input, chunk_type) = tag("MTrk")(input)?;
         let chunk_type = String::from_utf8(chunk_type.to_vec()).expect("Invalid chunk type");
         let (input, length) = be_u32(input)?;
+        assert!(length > 0);
         let (input, mut bytes) = take(length as usize)(input)?;
         let mut data: Vec<MTrkEvent> = Vec::new();
-        while bytes.len() > 0 {
+        while !bytes.is_empty() {
             let (remaining, event) = MTrkEvent::parse(
                 bytes,
                 match data.last() {
@@ -30,8 +31,8 @@ impl TrackChunk {
             data.push(event);
             bytes = remaining;
         }
-        let last_event = data.last().unwrap().event.clone();
-        assert!(last_event == Event::MetaEvent(MetaEvent::EndOfTrack));
+        let last_event = &data.last().expect("No events in track").event;
+        assert!(last_event == &Event::MetaEvent(MetaEvent::EndOfTrack));
         Ok((
             input,
             Self {
