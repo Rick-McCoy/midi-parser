@@ -18,7 +18,8 @@ impl SysExEvent {
         let (input, prefix) = tag(&[0xf0])(input)?;
         let (input, len) = VariableLengthQuantity::parse(input)?;
         let (input, data) = take(len.value as usize)(input)?;
-        data.iter().for_each(|byte| assert_ne!(*byte & 0x80, 0x80));
+        data.iter()
+            .for_each(|byte| assert_ne!(*byte >> 7, 1, "Length: {}, Data: {:?}", len.value, data));
         let (input, suffix) = opt(tag(&[0xf7]))(input)?;
         Ok((
             input,

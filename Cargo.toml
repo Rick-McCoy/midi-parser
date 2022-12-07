@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 nom = "7"
+rand = "0.8"
+walkdir = "2"
+indicatif = "0.17"
