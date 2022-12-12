@@ -1,3 +1,4 @@
+use encoding_rs::WINDOWS_1252;
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u8,
@@ -84,7 +85,14 @@ impl MetaEvent {
             0x01 | 0x02 | 0x03 | 0x04 | 0x05 | 0x06 | 0x07 => {
                 let (input, length) = VariableLengthQuantity::parse(input)?;
                 let (input, text) = take(length.value as usize)(input)?;
-                let text = String::from_utf8(text.to_vec()).expect("Invalid UTF-8");
+                let (text, _, replacement_used) = WINDOWS_1252.decode(text);
+                if replacement_used {
+                    return Err(nom::Err::Error(nom::error::Error::new(
+                        input,
+                        nom::error::ErrorKind::Verify,
+                    )));
+                }
+                let text = text.to_string();
                 Ok((
                     input,
                     match meta_type {
@@ -181,27 +189,48 @@ impl MetaEvent {
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             Self::SequenceNumber => vec![0xff, 0x00, 0x02],
-            Self::TextEvent { length, text } => {
-                [&[0xff, 0x01], length.to_bytes().as_slice(), text.as_bytes()].concat()
-            }
-            Self::CopyrightNotice { length, text } => {
-                [&[0xff, 0x02], length.to_bytes().as_slice(), text.as_bytes()].concat()
-            }
-            Self::SequenceOrTrackName { length, text } => {
-                [&[0xff, 0x03], length.to_bytes().as_slice(), text.as_bytes()].concat()
-            }
-            Self::InstrumentName { length, text } => {
-                [&[0xff, 0x04], length.to_bytes().as_slice(), text.as_bytes()].concat()
-            }
-            Self::Lyric { length, text } => {
-                [&[0xff, 0x05], length.to_bytes().as_slice(), text.as_bytes()].concat()
-            }
-            Self::Marker { length, text } => {
-                [&[0xff, 0x06], length.to_bytes().as_slice(), text.as_bytes()].concat()
-            }
-            Self::CuePoint { length, text } => {
-                [&[0xff, 0x07], length.to_bytes().as_slice(), text.as_bytes()].concat()
-            }
+            Self::TextEvent { length, text } => [
+                &[0xff, 0x01],
+                length.to_bytes().as_slice(),
+                WINDOWS_1252.encode(text).0.as_ref(),
+            ]
+            .concat(),
+            Self::CopyrightNotice { length, text } => [
+                &[0xff, 0x02],
+                length.to_bytes().as_slice(),
+                WINDOWS_1252.encode(text).0.as_ref(),
+            ]
+            .concat(),
+            Self::SequenceOrTrackName { length, text } => [
+                &[0xff, 0x03],
+                length.to_bytes().as_slice(),
+                WINDOWS_1252.encode(text).0.as_ref(),
+            ]
+            .concat(),
+            Self::InstrumentName { length, text } => [
+                &[0xff, 0x04],
+                length.to_bytes().as_slice(),
+                WINDOWS_1252.encode(text).0.as_ref(),
+            ]
+            .concat(),
+            Self::Lyric { length, text } => [
+                &[0xff, 0x05],
+                length.to_bytes().as_slice(),
+                WINDOWS_1252.encode(text).0.as_ref(),
+            ]
+            .concat(),
+            Self::Marker { length, text } => [
+                &[0xff, 0x06],
+                length.to_bytes().as_slice(),
+                WINDOWS_1252.encode(text).0.as_ref(),
+            ]
+            .concat(),
+            Self::CuePoint { length, text } => [
+                &[0xff, 0x07],
+                length.to_bytes().as_slice(),
+                WINDOWS_1252.encode(text).0.as_ref(),
+            ]
+            .concat(),
             Self::MidiChannelPrefix { channel } => vec![0xff, 0x20, 0x01, *channel],
             Self::EndOfTrack => vec![0xff, 0x2f, 0x00],
             Self::SetTempo { tempo } => {

@@ -50,131 +50,96 @@ impl VariableLengthQuantity {
 #[cfg(test)]
 mod tests {
     pub use super::VariableLengthQuantity;
-    use nom::Finish;
 
     #[test]
     fn test_parse_variable_length_quantity() {
-        let input = [0x00];
-        let expected = VariableLengthQuantity { value: 0x00 };
-        let (_, actual) = VariableLengthQuantity::parse(&input).finish().unwrap();
-        assert_eq!(expected, actual);
-
-        let input = [0x40];
-        let expected = VariableLengthQuantity { value: 0x40 };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0x7f];
-        let expected = VariableLengthQuantity { value: 0x7f };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0x81, 0x00];
-        let expected = VariableLengthQuantity { value: 0x80 };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0xc0, 0x00];
-        let expected = VariableLengthQuantity { value: 0x2000 };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0xff, 0x7f];
-        let expected = VariableLengthQuantity { value: 0x3fff };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0x81, 0x80, 0x00];
-        let expected = VariableLengthQuantity { value: 0x4000 };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0xc0, 0x80, 0x00];
-        let expected = VariableLengthQuantity { value: 0x100000 };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0xff, 0xff, 0x7f];
-        let expected = VariableLengthQuantity { value: 0x1fffff };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0x81, 0x80, 0x80, 0x00];
-        let expected = VariableLengthQuantity { value: 0x200000 };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0xc0, 0x80, 0x80, 0x00];
-        let expected = VariableLengthQuantity { value: 0x8000000 };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
-
-        let input = [0xff, 0xff, 0xff, 0x7f];
-        let expected = VariableLengthQuantity { value: 0xfffffff };
-        let actual = VariableLengthQuantity::parse(&input).finish().unwrap().1;
-        assert_eq!(expected, actual);
+        let input_answer_pairs_1 = [([0x00], 0x00), ([0x40], 0x40), ([0x7f], 0x7f)];
+        let input_answer_pairs_2 = [
+            ([0x81, 0x00], 0x80),
+            ([0xc0, 0x00], 0x2000),
+            ([0xff, 0x7f], 0x3fff),
+        ];
+        let input_answer_pairs_3 = [
+            ([0x81, 0x80, 0x00], 0x4000),
+            ([0xc0, 0x80, 0x00], 0x100000),
+            ([0xff, 0xff, 0x7f], 0x1fffff),
+        ];
+        let input_answer_pairs_4 = [
+            ([0x81, 0x80, 0x80, 0x00], 0x200000),
+            ([0xc0, 0x80, 0x80, 0x00], 0x8000000),
+            ([0xff, 0xff, 0xff, 0x7f], 0xfffffff),
+        ];
+        for (input, answer) in input_answer_pairs_1.iter() {
+            let expected = VariableLengthQuantity { value: *answer };
+            let actual = match VariableLengthQuantity::parse(input) {
+                Ok((_, actual)) => actual,
+                Err(e) => panic!("{:?}", e),
+            };
+            assert_eq!(expected, actual);
+        }
+        for (input, answer) in input_answer_pairs_2.iter() {
+            let expected = VariableLengthQuantity { value: *answer };
+            let actual = match VariableLengthQuantity::parse(input) {
+                Ok((_, actual)) => actual,
+                Err(e) => panic!("{:?}", e),
+            };
+            assert_eq!(expected, actual);
+        }
+        for (input, answer) in input_answer_pairs_3.iter() {
+            let expected = VariableLengthQuantity { value: *answer };
+            let actual = match VariableLengthQuantity::parse(input) {
+                Ok((_, actual)) => actual,
+                Err(e) => panic!("{:?}", e),
+            };
+            assert_eq!(expected, actual);
+        }
+        for (input, answer) in input_answer_pairs_4.iter() {
+            let expected = VariableLengthQuantity { value: *answer };
+            let actual = match VariableLengthQuantity::parse(input) {
+                Ok((_, actual)) => actual,
+                Err(e) => panic!("{:?}", e),
+            };
+            assert_eq!(expected, actual);
+        }
     }
 
     #[test]
     fn test_to_bytes() {
-        let input = VariableLengthQuantity { value: 0x00 };
-        let expected = vec![0x00u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x40 };
-        let expected = vec![0x40u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x7f };
-        let expected = vec![0x7fu8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x80 };
-        let expected = vec![0x81u8, 0x00u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x2000 };
-        let expected = vec![0xc0u8, 0x00u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x3fff };
-        let expected = vec![0xffu8, 0x7fu8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x4000 };
-        let expected = vec![0x81u8, 0x80u8, 0x00u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x100000 };
-        let expected = vec![0xc0u8, 0x80u8, 0x00u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x1fffff };
-        let expected = vec![0xffu8, 0xffu8, 0x7fu8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x200000 };
-        let expected = vec![0x81u8, 0x80u8, 0x80u8, 0x00u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0x8000000 };
-        let expected = vec![0xc0u8, 0x80u8, 0x80u8, 0x00u8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
-
-        let input = VariableLengthQuantity { value: 0xfffffff };
-        let expected = vec![0xffu8, 0xffu8, 0xffu8, 0x7fu8];
-        let actual = input.to_bytes();
-        assert_eq!(expected, actual);
+        let input_answer_pairs_1 = [(0x00, [0x00]), (0x40, [0x40]), (0x7f, [0x7f])];
+        let input_answer_pairs_2 = [
+            (0x80, [0x81, 0x00]),
+            (0x2000, [0xc0, 0x00]),
+            (0x3fff, [0xff, 0x7f]),
+        ];
+        let input_answer_pairs_3 = [
+            (0x4000, [0x81, 0x80, 0x00]),
+            (0x100000, [0xc0, 0x80, 0x00]),
+            (0x1fffff, [0xff, 0xff, 0x7f]),
+        ];
+        let input_answer_pairs_4 = [
+            (0x200000, [0x81, 0x80, 0x80, 0x00]),
+            (0x8000000, [0xc0, 0x80, 0x80, 0x00]),
+            (0xfffffff, [0xff, 0xff, 0xff, 0x7f]),
+        ];
+        for (input, answer) in input_answer_pairs_1.iter() {
+            let expected = answer.to_vec();
+            let actual = VariableLengthQuantity { value: *input }.to_bytes();
+            assert_eq!(expected, actual);
+        }
+        for (input, answer) in input_answer_pairs_2.iter() {
+            let expected = answer.to_vec();
+            let actual = VariableLengthQuantity { value: *input }.to_bytes();
+            assert_eq!(expected, actual);
+        }
+        for (input, answer) in input_answer_pairs_3.iter() {
+            let expected = answer.to_vec();
+            let actual = VariableLengthQuantity { value: *input }.to_bytes();
+            assert_eq!(expected, actual);
+        }
+        for (input, answer) in input_answer_pairs_4.iter() {
+            let expected = answer.to_vec();
+            let actual = VariableLengthQuantity { value: *input }.to_bytes();
+            assert_eq!(expected, actual);
+        }
     }
 }

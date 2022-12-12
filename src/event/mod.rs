@@ -27,7 +27,7 @@ impl Event {
             }
             _ => {
                 if status & 0x80 == 0 {
-                    assert_eq!(running_status & 0x80, 0x80);
+                    assert_eq!(running_status >> 7, 1);
                     assert_ne!(running_status, 0xf0);
                     assert_ne!(running_status, 0xf7);
                     assert_ne!(running_status, 0xff);
