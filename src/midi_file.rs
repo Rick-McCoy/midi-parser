@@ -12,10 +12,6 @@ impl MidiFile {
         let (input, header) = HeaderChunk::parse(input)?;
         let ntrks = header.data.ntrks as usize;
         let (input, tracks) = count(TrackChunk::parse, ntrks)(input)?;
-        // assert!(input.is_empty(), "Extra bytes at end of file: {:x?}", input);
-        if !input.is_empty() {
-            println!("Extra bytes at end of file: {:x?}", input);
-        }
         Ok((input, Self { header, tracks }))
     }
 

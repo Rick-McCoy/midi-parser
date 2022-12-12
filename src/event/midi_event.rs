@@ -45,7 +45,7 @@ impl ChannelVoiceMessage {
                 let (input, note) = be_u8(input)?;
                 let (input, velocity) = be_u8(input)?;
                 assert_eq!(note >> 7, 0, "Invalid note: {:x}", note);
-                assert_eq!(velocity >> 7, 0, "Invalid velocity: {:x}", velocity);
+                let velocity = velocity & 0x7f;
                 Ok((
                     input,
                     Self::NoteOff {
@@ -59,7 +59,7 @@ impl ChannelVoiceMessage {
                 let (input, note) = be_u8(input)?;
                 let (input, velocity) = be_u8(input)?;
                 assert_eq!(note >> 7, 0, "Invalid note: {:x}", note);
-                assert_eq!(velocity >> 7, 0, "Invalid velocity: {:x}", velocity);
+                let velocity = velocity & 0x7f;
                 Ok((
                     input,
                     Self::NoteOn {

@@ -26,11 +26,7 @@ impl Event {
                 Ok((input, Self::MetaEvent(event)))
             }
             _ => {
-                if status & 0x80 == 0 {
-                    assert_eq!(running_status >> 7, 1);
-                    assert_ne!(running_status, 0xf0);
-                    assert_ne!(running_status, 0xf7);
-                    assert_ne!(running_status, 0xff);
+                if status >> 7 == 0 {
                     let (input, event) = MidiMessage::parse(input, running_status)?;
                     Ok((input, Self::MidiEvent(event)))
                 } else {
