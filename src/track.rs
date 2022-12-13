@@ -45,13 +45,13 @@ impl TrackChunk {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let chunk_bytes = self.chunk_type.as_bytes().to_vec();
-        let length_bytes = self.length.to_be_bytes().to_vec();
         let data_bytes = self
             .data
             .iter()
             .flat_map(|event| event.to_bytes())
             .collect::<Vec<u8>>();
-        assert_eq!(self.length as usize, data_bytes.len());
+        assert!(data_bytes.len() < u32::MAX as usize);
+        let length_bytes = (data_bytes.len() as u32).to_be_bytes().to_vec();
         [chunk_bytes, length_bytes, data_bytes].concat()
     }
 }

@@ -1,4 +1,6 @@
-use nom::{combinator::peek, number::complete::be_u8, sequence::tuple, IResult};
+use nom::{combinator::peek, IResult};
+
+use crate::utils::be_u7;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ChannelVoiceMessage {
@@ -42,10 +44,8 @@ impl ChannelVoiceMessage {
         let channel = status & 0x0f;
         match message_type {
             0x8 => {
-                let (input, note) = be_u8(input)?;
-                let (input, velocity) = be_u8(input)?;
-                assert_eq!(note & 0x80, 0);
-                assert_eq!(velocity & 0x80, 0);
+                let (input, note) = be_u7(input)?;
+                let (input, velocity) = be_u7(input)?;
                 Ok((
                     input,
                     Self::NoteOff {
@@ -56,10 +56,8 @@ impl ChannelVoiceMessage {
                 ))
             }
             0x9 => {
-                let (input, note) = be_u8(input)?;
-                let (input, velocity) = be_u8(input)?;
-                assert_eq!(note & 0x80, 0);
-                assert_eq!(velocity & 0x80, 0);
+                let (input, note) = be_u7(input)?;
+                let (input, velocity) = be_u7(input)?;
                 Ok((
                     input,
                     Self::NoteOn {
@@ -70,10 +68,8 @@ impl ChannelVoiceMessage {
                 ))
             }
             0xa => {
-                let (input, note) = be_u8(input)?;
-                let (input, pressure) = be_u8(input)?;
-                assert_eq!(note & 0x80, 0);
-                assert_eq!(pressure & 0x80, 0);
+                let (input, note) = be_u7(input)?;
+                let (input, pressure) = be_u7(input)?;
                 Ok((
                     input,
                     Self::PolyphonicKeyPressure {
@@ -84,10 +80,8 @@ impl ChannelVoiceMessage {
                 ))
             }
             0xb => {
-                let (input, controller) = be_u8(input)?;
-                let (input, value) = be_u8(input)?;
-                assert_eq!(controller & 0x80, 0);
-                assert_eq!(value & 0x80, 0);
+                let (input, controller) = be_u7(input)?;
+                let (input, value) = be_u7(input)?;
                 Ok((
                     input,
                     Self::ControlChange {
@@ -98,20 +92,16 @@ impl ChannelVoiceMessage {
                 ))
             }
             0xc => {
-                let (input, program) = be_u8(input)?;
-                assert_eq!(program & 0x80, 0);
+                let (input, program) = be_u7(input)?;
                 Ok((input, Self::ProgramChange { channel, program }))
             }
             0xd => {
-                let (input, pressure) = be_u8(input)?;
-                assert_eq!(pressure & 0x80, 0);
+                let (input, pressure) = be_u7(input)?;
                 Ok((input, Self::ChannelPressure { channel, pressure }))
             }
             0xe => {
-                let (input, lsb) = be_u8(input)?;
-                let (input, msb) = be_u8(input)?;
-                assert_eq!(lsb & 0x80, 0);
-                assert_eq!(msb & 0x80, 0);
+                let (input, lsb) = be_u7(input)?;
+                let (input, msb) = be_u7(input)?;
                 let value = ((msb as u16) << 7) | (lsb as u16);
                 Ok((input, Self::PitchBendChange { channel, value }))
             }
@@ -170,20 +160,20 @@ pub enum ModeMessage {
 
 impl ModeMessage {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, controller) = be_u8(input)?;
-        let (input, value) = be_u8(input)?;
+        let (input, controller) = be_u7(input)?;
+        let (input, value) = be_u7(input)?;
         match controller {
             0x7a => match value {
                 0x00 => Ok((input, Self::LocalControlOff)),
                 0x7f => Ok((input, Self::LocalControlOn)),
-                _ => panic!("Invalid value for local control: Got {}", value),
+                _ => panic!("Invalid value for local control {}", value),
             },
             0x7b => Ok((input, Self::AllNotesOff)),
             0x7c => Ok((input, Self::OmniModeOff)),
             0x7d => Ok((input, Self::OmniModeOn)),
             0x7e => Ok((input, Self::MonoModeOn { n: value })),
             0x7f => Ok((input, Self::PolyModeOn)),
-            _ => panic!("Invalid controller: Got {}", controller),
+            _ => panic!("Invalid controller for mode message {}", controller),
         }
     }
 
@@ -239,7 +229,7 @@ impl ChannelMessage {
                 Ok((input, Self::ChannelVoiceMessage(message)))
             }
             0xb => {
-                let (input, (_, controller)) = peek(tuple((be_u8, be_u8)))(input)?;
+                let (input, controller) = peek(be_u7)(input)?;
                 match controller {
                     0x7a | 0x7b | 0x7c | 0x7d | 0x7e | 0x7f => {
                         let (input, message) = ChannelModeMessage::parse(input, status)?;
@@ -284,16 +274,13 @@ impl SystemCommonMessage {
         let message_type = status & 0x0f;
         match message_type {
             0x2 => {
-                let (input, lsb) = be_u8(input)?;
-                let (input, msb) = be_u8(input)?;
-                assert_eq!(lsb & 0x80, 0);
-                assert_eq!(msb & 0x80, 0);
+                let (input, lsb) = be_u7(input)?;
+                let (input, msb) = be_u7(input)?;
                 let value = ((msb as u16) << 7) | (lsb as u16);
                 Ok((input, Self::SongPositionPointer { value }))
             }
             0x3 => {
-                let (input, song) = be_u8(input)?;
-                assert_eq!(song & 0x80, 0);
+                let (input, song) = be_u7(input)?;
                 Ok((input, Self::SongSelect { song }))
             }
             0x6 => Ok((input, Self::TuneRequest)),
@@ -427,7 +414,7 @@ impl MidiMessage {
                 let (input, message) = SystemMessage::parse(input, status)?;
                 Ok((input, Self::SystemMessage(message)))
             }
-            _ => panic!("Invalid message type: Got {}", message_type),
+            _ => panic!("Invalid message type {}", message_type),
         }
     }
 

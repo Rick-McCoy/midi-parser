@@ -12,7 +12,6 @@ impl MidiFile {
         let (input, header) = HeaderChunk::parse(input)?;
         let ntrks = header.data.ntrks as usize;
         let (input, tracks) = count(TrackChunk::parse, ntrks)(input)?;
-        assert!(input.is_empty());
         Ok((input, Self { header, tracks }))
     }
 
@@ -77,7 +76,10 @@ mod tests {
             0x00, 0x3c, 0x00, // note on, channel 2, note 60, velocity 0 (note off)
             0x00, 0xff, 0x2f, 0x00, // end of track
         ];
-        let (_, midi_file) = MidiFile::parse(&bytes).unwrap();
+        let midi_file = match MidiFile::parse(&bytes) {
+            Ok((_, midi_file)) => midi_file,
+            Err(error) => panic!("Error: {:?}", error),
+        };
         assert_eq!(midi_file.header.chunk_type, "MThd");
         assert_eq!(midi_file.header.length, 6);
         assert_eq!(midi_file.header.data.format, 1);
@@ -470,7 +472,10 @@ mod tests {
             ]
         );
 
-        let parsed_midi_file = MidiFile::parse(&bytes).unwrap().1;
+        let parsed_midi_file = match MidiFile::parse(&bytes) {
+            Ok((_, midi_file)) => midi_file,
+            Err(e) => panic!("Error parsing MIDI file: {}", e),
+        };
         assert_eq!(midi_file, parsed_midi_file);
     }
 }
