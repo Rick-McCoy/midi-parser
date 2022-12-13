@@ -21,8 +21,7 @@ fn test_parse() {
         })
         .collect::<Vec<_>>();
 
-    let seed = [0xca; 32];
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = thread_rng();
 
     let midi_files = midi_files
         .choose_multiple(&mut rng, sample_size as usize)
@@ -42,26 +41,38 @@ fn test_parse() {
         let path = file.path();
         let file_name_osstr = match path.file_name() {
             Some(s) => s,
-            None => continue,
+            None => {
+                panic!("No file name for path: {:?}", path);
+            }
         };
         let file_name = match file_name_osstr.to_os_string().into_string() {
             Ok(s) => s,
-            Err(_) => continue,
+            Err(_) => {
+                panic!("Invalid file name for path: {:?}", path);
+            }
         };
         pb.set_message(file_name);
 
         let data = match std::fs::read(path) {
             Ok(d) => d,
-            Err(_) => continue,
+            Err(_) => {
+                panic!("Could not read file: {:?}", path);
+            }
         };
         let midi_file = match MidiFile::parse(&data) {
             Ok((_, m)) => m,
-            Err(_) => continue,
+            Err(e) => {
+                println!("Could not parse file: {:?}, {:?}", path, e);
+                continue;
+            }
         };
         let parsed_data = midi_file.to_bytes();
         let reopened_midi_file = match MidiFile::parse(&parsed_data) {
             Ok((_, m)) => m,
-            Err(_) => continue,
+            Err(e) => {
+                println!("Could not re-parse file: {:?}, {:?}", path, e);
+                continue;
+            }
         };
         assert_eq!(midi_file.header, reopened_midi_file.header);
         assert_eq!(midi_file.tracks.len(), reopened_midi_file.tracks.len());
@@ -77,9 +88,7 @@ fn test_parse() {
                 assert_eq!(event.event, reopened_event.event);
             }
         }
-
         pb.inc(1);
     }
-
     pb.finish();
 }

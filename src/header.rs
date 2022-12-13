@@ -17,7 +17,7 @@ impl Division {
             Ok((input, Division::TicksPerQuarterNote { ticks: division }))
         } else {
             let frames = (division >> 8) as u8;
-            let ticks = (division & 0x00FF) as u8;
+            let ticks = (division & 0x00ff) as u8;
             Ok((input, Division::FramesPerSecond { frames, ticks }))
         }
     }

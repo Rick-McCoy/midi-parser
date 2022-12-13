@@ -1,4 +1,5 @@
 use nom::{
+    branch::alt,
     bytes::complete::{tag, take},
     IResult,
 };
@@ -13,9 +14,9 @@ pub struct SysExEvent {
 
 impl SysExEvent {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, prefix) = tag(&[0xf0, 0xf7])(input)?;
+        let (input, prefix) = alt((tag(&[0xf0]), tag(&[0xf7])))(input)?;
         let (input, len) = VariableLengthQuantity::parse(input)?;
-        let (input, data) = take(len.value as usize)(input)?;
+        let (input, data) = take(len.value)(input)?;
         let (last_byte, penultimate_data) = match data.split_last() {
             Some((last_byte, penultimate_data)) => (last_byte, penultimate_data),
             None => {
